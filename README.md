@@ -8,6 +8,10 @@ Currently, the only demo file is `ensemble_demo.py`, which demonstrates how to u
 
 # All OccamNet repositories
 
-Please note that there are many other implementations of OccamNet available. This repository breifly describes the different implementations available and provides reccomendations for which one to use.
+Please note that there are many other implementations of OccamNet available. [This repository](https://github.com/druidowm/OccamNet_Versions) breifly describes the different implementations available and provides reccomendations for which one to use.
 
 If you are a Social Scientist looking to use OccamNet in your work, this implementation is currently the best to use. It offers more functionality than other implementations at the cost of being somewhat slow. We are currently working on a new implementation which will be substantially faster. Stay tuned!
+
+# Questions about OccamNet?
+
+Feel free to contact Owen Dugan at odugan@mit.edu.
