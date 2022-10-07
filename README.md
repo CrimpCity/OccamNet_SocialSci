@@ -44,10 +44,10 @@ $$
 ### Solow model example
 
 $$
-\begin{align*}
-    \frac{dk}{dt} &= sy-k(\delta+g+n)
-\end{align*}
+\frac{dk}{dt} = sy-k(\delta+g+n)
 $$
+
+$\delta$ and $g$ are constant parameters that vary for each dataset in an ensemble of 20. 
 
     python solow_demo.py
 
