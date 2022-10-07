@@ -36,9 +36,9 @@ $$
 \end{align*}
 $$
 
-    python lotka_volterra_demo.py --target_var s
-    python lotka_volterra_demo.py --target_var i
-    python lotka_volterra_demo.py --target_var r
+    python sir_demo.py --target_var s
+    python sir_demo.py --target_var i
+    python sir_demo.py --target_var r
 
 
 ### Solow model example
