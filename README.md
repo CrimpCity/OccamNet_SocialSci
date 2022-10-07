@@ -18,8 +18,8 @@ We include demos for the experiments in the [paper](https://arxiv.org/abs/2210.0
 ### Lotka-Volterra model example
 $$
 \begin{align*}
-    \frac{dH}{dt} &= 0.03H-0.001HL,\\
-    \frac{dL}{dt} &= 0.006HL-0.15L.
+    \frac{dH}{dt} &= 0.03H-0.001HL\\
+    \frac{dL}{dt} &= 0.006HL-0.15L
 \end{align*}
 $$
 
@@ -30,9 +30,9 @@ $$
 
 $$
 \begin{align*}
-    \frac{ds}{dt} &= -0.5si,\\
-    \frac{di}{dt} &= 0.5si-0.2i,\\
-    \frac{dr}{dt} &= 0.2i.
+    \frac{ds}{dt} &= -0.5si\\
+    \frac{di}{dt} &= 0.5si-0.2i\\
+    \frac{dr}{dt} &= 0.2i
 \end{align*}
 $$
 
@@ -45,10 +45,9 @@ $$
 
 $$
 \begin{align*}
-    \frac{dk}{dt} &= sy-k(\delta+g+n),
+    \frac{dk}{dt} &= sy-k(\delta+g+n)
 \end{align*}
 $$
-where $\delta$ and $g$ are constant parameters that vary for each dataset in an ensemble of 20. 
 
     python solow_demo.py
 
