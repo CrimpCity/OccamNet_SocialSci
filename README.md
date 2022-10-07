@@ -6,25 +6,49 @@ The OccamNet implementation used for this work is found in the `occamnet` folder
 
 # Demos
 
-The `ensemble_demo.py` file demonstrates how to use OccamNet in its most general setting to fit an ensemble of datasets.
+## Ensemble demo
+
+The `ensemble_demo.py` file demonstrates how to use OccamNet in its most general setting to fit an ensemble of datasets. As an example, we generate 5 datasets according to the equation $y = ax^b$. OccamNet is then able to recover the correct functional form and identify the constant parameters $a$ and $b$ for each dataset in the ensemble.
 
     python ensemble_demo.py
 
-We also include demos for our experiments with synthetic data. The `lotka_volterra_demo.py` and `sir_demo.py` files demonstrate differential equation fitting, where each equation in the ODE system is fit individually. The `solow_demo.py` file demonstrates ensemble fitting with unit checking. All demos specify hyperparameters described in the appendix of the [paper](https://arxiv.org/abs/2210.00563).
+## Synthetic data experiments
+We include demos for the experiments in the [paper](https://arxiv.org/abs/2210.00563) that use synthetically generated data. The `lotka_volterra_demo.py` and `sir_demo.py` files demonstrate differential equation fitting, where each equation in the ODE system is fit individually. The `solow_demo.py` file demonstrates ensemble fitting with unit checking. All demos use the hyperparameters specified in the appendix of the paper.
 
-## Lotka-Volterra model
+### Lotka-Volterra model example
+$$
+\begin{align*}
+    \frac{dH}{dt} &= 0.03H-0.001HL,\\
+    \frac{dL}{dt} &= 0.006HL-0.15L.
+\end{align*}
+$$
 
     python lotka_volterra_demo.py --target_var H
     python lotka_volterra_demo.py --target_var L
 
-## SIR model
+### SIR model example
+
+$$
+\begin{align*}
+    \frac{ds}{dt} &= -0.5si,\\
+    \frac{di}{dt} &= 0.5si-0.2i,\\
+    \frac{dr}{dt} &= 0.2i.
+\end{align*}
+$$
 
     python lotka_volterra_demo.py --target_var s
     python lotka_volterra_demo.py --target_var i
     python lotka_volterra_demo.py --target_var r
 
 
-## Solow model
+### Solow model example
+
+$$
+\begin{align*}
+    \frac{dk}{dt} &= sy-k(\delta+g+n),
+\end{align*}
+$$
+where $\delta$ and $g$ are constant parameters that vary for each dataset in an ensemble of 20. 
 
     python solow_demo.py
 
