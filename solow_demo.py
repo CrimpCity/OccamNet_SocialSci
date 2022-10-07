@@ -2,9 +2,13 @@ from datetime import datetime
 import time
 import csv
 
+import pandas as pd
 import numpy as np
+
 import torch
 import torch.nn as nn
+
+from scipy.integrate import odeint
 
 import occamnet.Bases as Bases
 from occamnet.Losses import CrossEntropyLoss
@@ -12,68 +16,72 @@ from occamnet.Network import NetworkConstants
 from occamnet.SparseSetters import SetNoSparse as SNS
 
 
-def func(x, a, b):
-    return a*np.power(x, b)
+def model(data, t):
+    k, y, s, n, delta, g_b, alpha = data
+    dydt = [s*y-k*(delta+g_b+n), alpha*y/k*(s*y-k*(delta+n+g_b)), 0.05, 0.05*n, 0, 0, 0]
+    return dydt
 
 if __name__ == '__main__':
 
     ################ Generate data ################
 
-    # Generate constant values for 5 panels
-    a_vals = [2, 4, 6, 8, 10]
-    b_vals = [0.1, 0.2, 0.3, 0.4, 0.5]
+    size = 20
+    s = np.random.uniform(low=0.2, high=0.8, size=(size,)) 
+    n = np.random.uniform(low=0.05, high=0.1, size=(size,))  
+    delta = np.random.uniform(low=0.05, high=0.1, size=(size,))
+    g_b = np.random.uniform(low=0.05, high=0.1, size=(size,))
+    alpha = np.random.uniform(low=0.01, high=0.5, size=(size,))
+    k0 = np.random.uniform(low=0.01, high=0.1, size=(size,))
+    y0 = k0**alpha
 
-    X = []
-    Y = []
+    t = np.arange(30) # time points
 
-    for a, b in zip(a_vals, b_vals):
-        # Individual panels can have varying sizes
-        panel_size = np.random.randint(low=50, high=150) 
-        x = np.random.uniform(low=0.1, high=1.0, size=(panel_size, 1)) 
+    # solve ODE
+    model_fit = [odeint(model, [k0[i], y0[i], s[i], delta[i], n[i], g_b[i], alpha[i]], t) for i in range(len(s))]
+    X = [torch.FloatTensor(xi)[:, [0, 1, 2, 3]] for xi in model_fit]
 
-        y = func(x, a, b)
-
-        X.append(torch.FloatTensor(x))
-        Y.append(torch.FloatTensor(y))
-
-
-    inputSize = 1 # Number of input variables in each individual dataset
+    # Fit dk/dt (index 0)
+    Y = [torch.FloatTensor(np.diff(X[i][:, [0]], axis=0)[1:] - 0.5*np.diff(np.diff(X[i][:, [0]], axis=0), axis=0)) for i in range(len(X))]
+    X = [X[i][1:-1, :] for i in range(len(X))]
+  
+    inputSize = 4 # Number of input variables in each individual dataset
     outputSize = 1 # Number of output variables in each individual dataset
+
+    units = [np.array([1, -1]),np.array([1, -1]), np.array([0, 0]), np.array([0, 0]), np.array([1, -1])]
 
 
     ################ Initialize OccamNet ################
 
     ensembleMode = True # Toggle ensemble learning
 
-    # Hyperparameters
-    epochs = 100
+    # Default hyperparameters
+    epochs = 2
     batchesPerEpoch = 1
     learningRate = 1
     constantLearningRate = 0.05
     decay = 1
     temp = 10
     endTemp = 10
-    sampleSize = 100 # Number of functions to sample
+    sampleSize = 1000 # Number of functions to sample
 
     # Regularization parameters
     activationWeight = 0
     constantWeight = 0
 
     # Sweep parameters
-    sDev_sweep = [0.5, 5, 50]
-    top_sweep = [1, 5, 10]
-    equalization_sweep = [0, 1, 5]
+    sDev_sweep = [0.5]
+    top_sweep = [5]
+    equalization_sweep = [1]
 
     # Activation layers
-    layers = [
-        [Bases.Add(), Bases.Subtract(), Bases.Multiply(),  Bases.Divide(), Bases.AddConstant(), Bases.MultiplyConstant(), Bases.Square(), Bases.PowerConstant()],
-        [Bases.Add(), Bases.Subtract(), Bases.Multiply(), Bases.Divide(), Bases.AddConstant(), Bases.MultiplyConstant(), Bases.Square(), Bases.PowerConstant()]
-    ]
+    layers = [[Bases.Add(), Bases.Subtract(), Bases.Multiply(),  Bases.Divide(), Bases.AddConstant(), Bases.MultiplyConstant(), Bases.Square(), Bases.PowerConstant(), Bases.Exp(), Bases.Log(), Bases.Sin(), Bases.Cos()],
+            [Bases.Add(), Bases.Subtract(), Bases.Multiply(), Bases.Divide(), Bases.AddConstant(), Bases.MultiplyConstant(), Bases.Square(), Bases.PowerConstant(), Bases.Exp(), Bases.Log(), Bases.Sin(), Bases.Cos()],
+            [Bases.Add(), Bases.Subtract(), Bases.Multiply(), Bases.Divide(), Bases.AddConstant(), Bases.MultiplyConstant(), Bases.Square(), Bases.PowerConstant(), Bases.Exp(), Bases.Log(), Bases.Sin(), Bases.Cos()]]
 
     
     ################ Training ################
 
-    file_name = "EnsembleDemo"
+    file_name = "SolowDemo"
     date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S_%f")[:-3] 
     file_path = 'results/' + file_name + '_' + date_time + ".csv"
 
@@ -125,7 +133,8 @@ if __name__ == '__main__':
                                                 Y, 
                                                 useMultiprocessing = True, 
                                                 numProcesses = 20, 
-                                                ensemble=ensembleMode)
+                                                ensemble=ensembleMode,
+                                                units=units)
 
                 ### Evaluation ###
 

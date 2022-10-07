@@ -1,9 +1,6 @@
-import os
-import multiprocessing
 import argparse
 from datetime import datetime
 import time
-import pickle
 import csv
 
 import pandas as pd
@@ -11,15 +8,19 @@ import numpy as np
 
 import torch
 import torch.nn as nn
-from torch.distributions import Categorical
-import torch.nn.functional as F
 
 from scipy.integrate import odeint
 
 import occamnet.Bases as Bases
 from occamnet.Losses import CrossEntropyLoss
-from occamnet.Network import NetworkConstants, ActivationLayer
+from occamnet.Network import NetworkConstants
 from occamnet.SparseSetters import SetNoSparse as SNS
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--target_var", choices={"H", "L"}, default='H', 
+                    help="Target data to be fitted (either 'H' or 'L')")
+args = parser.parse_args()
 
 
 def model(y,t):
@@ -31,8 +32,6 @@ if __name__ == '__main__':
 
     ################ Generate data ################
 
-    # Generate constant values for 5 panels
-    
     X0 = [20, 20] # initial conditions
 
     t = np.linspace(0,200, num=200) # time points
@@ -41,8 +40,12 @@ if __name__ == '__main__':
     X = odeint(model,X0,t)
     Y = torch.tensor(np.diff(X[1:, ], axis=0) - 0.5*np.diff(np.diff(X, axis=0), axis=0), 
                     dtype=torch.float)
-    Y = Y[:, [0]] #Fit H
     X = torch.tensor(X[1:-1, :], dtype=torch.float)
+
+    if args.target_var == 'H':
+        Y = Y[:, [0]] # Fit only H
+    else:
+        Y = Y[:, [1]] # Fit only L
     
     inputSize = 2 # Number of input variables in each individual dataset
     outputSize = 1 # Number of output variables in each individual dataset
@@ -67,8 +70,8 @@ if __name__ == '__main__':
 
     # Sweep parameters
     sDev_sweep = [5]
-    top_sweep = [1, 5, 10]
-    equalization_sweep = [0, 1, 5]
+    top_sweep = [1]
+    equalization_sweep = [5]
 
     # Activation layers
     layers = [
@@ -80,14 +83,14 @@ if __name__ == '__main__':
     
     ################ Training ################
 
-    file_name = "lotkaVolterraDemo"
-    date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S.%f")[:-3] 
+    file_name = "LotkaVolterraDemo_" + args.target_var
+    date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S_%f")[:-3] 
     file_path = 'results/' + file_name + '_' + date_time + ".csv"
 
     with open(file_path, 'w') as f:
         writer = csv.writer(f)
 
-        header = ['mse', 'expression', 'sDev', 'top', 'equalization', 'time']
+        header = ['mse', 'expression', 'sDev', 'top', 'equalization', 'runtime']
 
         writer.writerow(header)
 
@@ -146,7 +149,7 @@ if __name__ == '__main__':
                 end = time.time()
                 minutes = (end - start)/60
 
-                with open(file_path, 'w') as f:
+                with open(file_path, 'a') as f:
                     writer = csv.writer(f)
 
                     data = [train_mse, expression, sDev, top, equalization, minutes]

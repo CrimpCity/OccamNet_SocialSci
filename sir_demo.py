@@ -1,10 +1,15 @@
+import argparse
 from datetime import datetime
 import time
 import csv
 
+import pandas as pd
 import numpy as np
+
 import torch
 import torch.nn as nn
+
+from scipy.integrate import odeint
 
 import occamnet.Bases as Bases
 from occamnet.Losses import CrossEntropyLoss
@@ -12,41 +17,47 @@ from occamnet.Network import NetworkConstants
 from occamnet.SparseSetters import SetNoSparse as SNS
 
 
-def func(x, a, b):
-    return a*np.power(x, b)
+parser = argparse.ArgumentParser()
+parser.add_argument("--target_var", choices={"s", "i", "r"}, default='s', 
+                    help="Target data to be fitted (one of 's', 'i', or 'r')")
+args = parser.parse_args()
+
+
+def model(y,t):
+    s,i,r = y
+    dydt = [-0.5*s*i, 0.5*s*i-0.2*i, 0.2*i]
+    return dydt
 
 if __name__ == '__main__':
 
     ################ Generate data ################
 
-    # Generate constant values for 5 panels
-    a_vals = [2, 4, 6, 8, 10]
-    b_vals = [0.1, 0.2, 0.3, 0.4, 0.5]
+    X0 = [1, 0.001, 0] # initial conditions
 
-    X = []
-    Y = []
+    t = np.arange(60) # time points
 
-    for a, b in zip(a_vals, b_vals):
-        # Individual panels can have varying sizes
-        panel_size = np.random.randint(low=50, high=150) 
-        x = np.random.uniform(low=0.1, high=1.0, size=(panel_size, 1)) 
+    # solve ODE
+    X = odeint(model,X0,t)
+    Y = torch.tensor(np.diff(X[1:, ], axis=0) - 0.5*np.diff(np.diff(X, axis=0), axis=0), 
+                    dtype=torch.float)
+    X = torch.tensor(X[1:-1, [0,1]], dtype=torch.float) # Use s and i as input variables
 
-        y = func(x, a, b)
-
-        X.append(torch.FloatTensor(x))
-        Y.append(torch.FloatTensor(y))
-
-
-    inputSize = 1 # Number of input variables in each individual dataset
+    if args.target_var == 's':
+        Y = Y[:, [0]] # Fit only s
+    elif args.target_var == 'i':
+        Y = Y[:, [1]] # Fit only i
+    else:
+        Y = Y[:, [2]] # Fit only i
+    
+    inputSize = 2 # Number of input variables in each individual dataset
     outputSize = 1 # Number of output variables in each individual dataset
-
 
     ################ Initialize OccamNet ################
 
-    ensembleMode = True # Toggle ensemble learning
+    ensembleMode = False # Toggle ensemble learning
 
-    # Hyperparameters
-    epochs = 100
+    # Default hyperparameters
+    epochs = 1000
     batchesPerEpoch = 1
     learningRate = 1
     constantLearningRate = 0.05
@@ -60,27 +71,28 @@ if __name__ == '__main__':
     constantWeight = 0
 
     # Sweep parameters
-    sDev_sweep = [0.5, 5, 50]
-    top_sweep = [1, 5, 10]
-    equalization_sweep = [0, 1, 5]
+    sDev_sweep = [5]
+    top_sweep = [1]
+    equalization_sweep = [5]
 
     # Activation layers
     layers = [
-        [Bases.Add(), Bases.Subtract(), Bases.Multiply(),  Bases.Divide(), Bases.AddConstant(), Bases.MultiplyConstant(), Bases.Square(), Bases.PowerConstant()],
-        [Bases.Add(), Bases.Subtract(), Bases.Multiply(), Bases.Divide(), Bases.AddConstant(), Bases.MultiplyConstant(), Bases.Square(), Bases.PowerConstant()]
+        [Bases.Add(), Bases.Subtract(), Bases.Multiply(),  Bases.Divide(), Bases.AddConstant(), Bases.MultiplyConstant()],
+        [Bases.Add(), Bases.Subtract(), Bases.Multiply(), Bases.Divide(), Bases.AddConstant(), Bases.MultiplyConstant()],
+        [Bases.Add(), Bases.Subtract(), Bases.Multiply(), Bases.Divide(), Bases.AddConstant(), Bases.MultiplyConstant()]
     ]
 
     
     ################ Training ################
 
-    file_name = "EnsembleDemo"
+    file_name = "SIRDemo_" + args.target_var
     date_time = datetime.now().strftime("%Y-%m-%d_%H%M%S_%f")[:-3] 
     file_path = 'results/' + file_name + '_' + date_time + ".csv"
 
-    with open(file_path, 'a') as f:
+    with open(file_path, 'w') as f:
         writer = csv.writer(f)
 
-        header = ['wmse', 'mse_sDev', 'mse_median', 'expression', 'sDev', 'top', 'equalization', 'runtime']
+        header = ['mse', 'expression', 'sDev', 'top', 'equalization', 'runtime']
 
         writer.writerow(header)
 
@@ -128,21 +140,11 @@ if __name__ == '__main__':
                                                 ensemble=ensembleMode)
 
                 ### Evaluation ###
-
-                output = n.forwardFitConstants(train_function, X, Y, ensemble=True)
-                output = output.squeeze(1)
-
-                # Weighted MSE
-                MSELoss = nn.MSELoss()
-                losses = []
-
-                for curr_Y in Y:
-                    curr_out, output = torch.split(output, [curr_Y.shape[0], output.shape[0]-curr_Y.shape[0]])
-                    losses.append(MSELoss(curr_Y, curr_out).item())
             
-                weighted_mse = np.mean(losses)
-                std_mse = np.std(losses)
-                median_mse = np.median(losses)
+                output = n.forwardFitConstants(train_function, X, Y, ensemble=ensembleMode)
+
+                MSELoss = nn.MSELoss()
+                train_mse = MSELoss(Y, output[:,0]).item()
 
                 expression = str(n.applySymbolicConstant(train_function))
 
@@ -152,8 +154,7 @@ if __name__ == '__main__':
                 with open(file_path, 'a') as f:
                     writer = csv.writer(f)
 
-                    data = [weighted_mse, std_mse, median_mse , expression, sDev, top, equalization, minutes]
+                    data = [train_mse, expression, sDev, top, equalization, minutes]
 
                     writer.writerow(data)
-
            
