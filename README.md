@@ -33,7 +33,7 @@ This implementation has been tested on Linux (Ubuntu 18.04.6) and macOS (Montere
 
 ## Ensemble demo
 
-The `ensemble_demo.py` file demonstrates how to use OccamNet in its most general setting to fit an ensemble of datasets. As an example, we generate 5 datasets according to the equation $y = ax^b$. OccamNet is then able to recover the correct functional form and identify the constant parameters $a$ and $b$ for each dataset in the ensemble.
+The `ensemble_demo.py` file demonstrates how to use OccamNet in its most general setting to fit an ensemble of datasets. As an example, we generate 5 datasets according to the equation $y = ax^b$. OccamNet is then able to recover the correct functional form and identify the constant parameters $a$ and $b$ for each dataset in the ensemble. The average runtime for the demos is 30 minutes.
 
     python ensemble_demo.py
 
