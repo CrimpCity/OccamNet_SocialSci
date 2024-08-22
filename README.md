@@ -86,3 +86,7 @@ If you are a Social Scientist looking to use OccamNet in your work, this impleme
 # Questions about OccamNet?
 
 Feel free to contact Owen Dugan at odugan@mit.edu.
+
+# Needs
+1. project root
+2. 
